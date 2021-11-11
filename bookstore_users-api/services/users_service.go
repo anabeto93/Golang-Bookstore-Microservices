@@ -38,3 +38,20 @@ func CreateUser(user users.User) (*users.User, *errors.RestErr) {
 	}
 	return &user, nil
 }
+
+func FindUser(userId int64) (*users.User, *errors.RestErr) {
+	var userDTO users.User
+	user, err := userDTO.Find(userId); if err != nil {
+		return nil, err
+	}
+
+	if user == nil {
+		return nil, errors.NewNotFoundError(fmt.Sprintf("User with id %d already exists", userId))
+	}
+
+	return user, nil
+}
+
+func UpdateUser(userId int64, user users.User) (*users.User, *errors.RestErr) {
+	return nil, nil
+}
