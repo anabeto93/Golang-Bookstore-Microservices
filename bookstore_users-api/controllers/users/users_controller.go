@@ -29,6 +29,11 @@ func CreateUser(c *gin.Context) {
 }
 
 func GetUsers(c *gin.Context) {
+	users, err := services.GetAllUsers(); if err != nil {
+		c.JSON(int(err.Status), err)
+		return
+	}
+	c.JSON(http.StatusOK, users)
 }
 
 func FindUser(c *gin.Context) {
@@ -63,4 +68,17 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, user)
+}
+
+func DeleteUser(c *gin.Context) {
+	userId, err := strconv.ParseInt(c.Param("id"), 10, 64); if err != nil {
+		res := errors.NewBadRequestError("invalid user id")
+		c.JSON(int(res.Status), err)
+		return
+	}
+	if delErr := services.DeleteUser(userId); delErr != nil {
+		c.JSON(int(delErr.Status), delErr)
+		return
+	}
+	c.JSON(http.StatusNoContent, nil)
 }

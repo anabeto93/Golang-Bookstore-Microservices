@@ -53,5 +53,45 @@ func FindUser(userId int64) (*users.User, *errors.RestErr) {
 }
 
 func UpdateUser(userId int64, user users.User) (*users.User, *errors.RestErr) {
-	return nil, nil
+	if err := user.Validate(); err != nil {
+		return nil, err
+	}
+	var userDTO users.User
+	existingUser, err := userDTO.Find(userId); if err != nil {
+		return nil, err
+	}
+	if existingUser == nil {
+		return nil, errors.NewNotFoundError(fmt.Sprintf("User with id %d not found.", userId))
+	}
+
+	_, err = existingUser.Update(user); if err != nil {
+		return nil, err;
+	}
+
+	return existingUser, nil
+}
+
+func GetAllUsers() ([]users.User, *errors.RestErr) {
+	var userDTO users.User
+	users, err := userDTO.GetAll(); if err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
+func DeleteUser(userId int64) *errors.RestErr {
+	var userDTO users.User
+	existingUser, err := userDTO.Find(userId); if err != nil {
+		return err
+	}
+	if existingUser == nil {
+		return errors.NewNotFoundError(fmt.Sprintf("User with id %d not found.", userId))
+	}
+
+	if err = existingUser.Destroy(); err != nil {
+		return err
+	}
+
+	return nil
 }

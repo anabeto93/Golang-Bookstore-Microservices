@@ -14,8 +14,33 @@ const (
 	insertQuery = "INSERT INTO users (email, first_name, last_name, date_created) VALUES (?, ?, ?, ?)"
 	getUserQuery = "SELECT id, first_name, last_name, email, date_created FROM users WHERE id = ? LIMIT 1;"
 	getUserByEmailQuery = "SELECT id, first_name, last_name, email, date_created FROM users WHERE email = ? LIMIT 1;"
-
+	allUsersQuery = "SELECT id, first_name, last_name, email, date_created FROM users LIMIT 1000;"
+	updateUserQuery = "UPDATE users SET first_name = ?, last_name = ?, email = ?, date_created = ? WHERE id = ?"
+	deleteQuery = "DELETE FROM users WHERE id = ?;"
 )
+
+func (user User) GetAll() ([]User, *errors.RestErr) {
+	var users = []User{}
+
+	stmnt, err := prepare(allUsersQuery); if err != nil {
+		return nil, err
+	}
+
+	defer stmnt.Close()
+
+	sqlUsers, sqlErr := stmnt.Query(); if sqlErr != nil {
+		return nil, errors.NewInternalServerError(fmt.Sprintf("Could not fetch users: %s", sqlErr.Error()))
+	}
+	
+	for sqlUsers.Next() {
+		var usr User
+		if sqlErr := sqlUsers.Scan(&usr.Id, &usr.Email, &usr.FirstName, &usr.LastName, &usr.DateCreated); sqlErr != nil {
+			return nil, errors.NewInternalServerError(fmt.Sprintf("Could not fetch users: %s", sqlErr.Error()))
+		}
+		users = append(users, usr)
+	}
+	return users, nil
+}
 
 func (user User) Find(userId int64) (*User, *errors.RestErr) {
 	var result User
@@ -27,7 +52,7 @@ func (user User) Find(userId int64) (*User, *errors.RestErr) {
 	defer stmnt.Close()
 
 	sqlUser := stmnt.QueryRow(userId)
-	fmt.Println(sqlUser)
+
 	if sqlErr := sqlUser.Scan(&result.Id, &result.Email, &result.FirstName, &result.LastName, &result.DateCreated); err != nil {
 		return nil, errors.NewInternalServerError(fmt.Sprintf("Error fetching user: %s", sqlErr.Error()))
 	}
@@ -82,6 +107,63 @@ func (user *User) Save() *errors.RestErr {
 	}
 	
 	user.Id = userId
+	return nil
+}
+
+func (user *User) Update(payload User) (int64, *errors.RestErr) {
+	stmnt, err := prepare(updateUserQuery); if err != nil {
+		return 0, err
+	}
+
+	defer stmnt.Close()
+
+	fname := payload.FirstName
+	if strings.TrimSpace(fname) == "" {
+		fname = user.FirstName
+	}
+
+	lname := payload.LastName
+	if strings.TrimSpace(lname) == "" {
+		lname = user.LastName
+	}
+
+	email := payload.Email
+	if strings.TrimSpace(email) == "" {
+		email = user.Email
+	}
+
+	date_created := payload.DateCreated
+	if strings.TrimSpace(date_created) == "" {
+		date_created = user.DateCreated
+	}
+
+	result, sqlErr := stmnt.Exec(fname, lname, email, date_created, user.Id);
+	if sqlErr != nil {
+		return 0, errors.NewInternalServerError(fmt.Sprintf("Error updating user: %s", sqlErr.Error()))
+	}
+
+	rows, sqlErr := result.RowsAffected(); if sqlErr != nil {
+		return 0, errors.NewInternalServerError(fmt.Sprintf("Error updating user: %s", sqlErr.Error()))
+	}
+
+	user.FirstName = fname
+	user.LastName = lname
+	user.Email = email
+	user.DateCreated = date_created
+
+	return rows, nil
+}
+
+func (user *User) Destroy() *errors.RestErr {
+	stmnt, err := prepare(deleteQuery); if err != nil {
+		return err
+	}
+
+	defer stmnt.Close()
+
+	_, sqlErr := stmnt.Exec(user.Id); if sqlErr != nil {
+		return errors.NewInternalServerError(fmt.Sprintf("Error deleting user: ", sqlErr.Error()))
+	}
 	return nil
 }
 

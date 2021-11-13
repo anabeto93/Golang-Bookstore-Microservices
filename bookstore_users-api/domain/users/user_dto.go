@@ -2,6 +2,7 @@ package users
 
 import (
 	"strings"
+	"time"
 
 	"github.com/anabeto93/bookstore/bookstore_users-api/utils/errors"
 )
@@ -19,6 +20,14 @@ func (user *User) Validate() *errors.RestErr {
 
 	if (user.Email == "") {
 		return errors.NewBadRequestError("invalid email address")
+	}
+
+	// check that the datetime is valid as well
+	if strings.TrimSpace(user.DateCreated) != "" {
+		// meaning a datetime has been provided
+		_, err := time.Parse("", user.DateCreated); if err != nil {
+			return errors.NewBadRequestError("invalid datetime value")			
+		}
 	}
 
 	return nil
