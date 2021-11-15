@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/anabeto93/bookstore/bookstore_users-api/domain/users"
 	"github.com/anabeto93/bookstore/bookstore_users-api/utils/errors"
@@ -52,9 +53,15 @@ func FindUser(userId int64) (*users.User, *errors.RestErr) {
 	return user, nil
 }
 
-func UpdateUser(userId int64, user users.User) (*users.User, *errors.RestErr) {
-	if err := user.Validate(); err != nil {
-		return nil, err
+func UpdateUser(userId int64, user users.User, isPartialUpdate bool) (*users.User, *errors.RestErr) {
+	if isPartialUpdate {
+		if err := user.ValidatePatch(); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := user.Validate(); err != nil {
+			return nil, err
+		}
 	}
 	var userDTO users.User
 	existingUser, err := userDTO.Find(userId); if err != nil {
@@ -64,26 +71,27 @@ func UpdateUser(userId int64, user users.User) (*users.User, *errors.RestErr) {
 		return nil, errors.NewNotFoundError(fmt.Sprintf("User with id %d not found.", userId))
 	}
 
-	_, err = existingUser.Update(user); if err != nil {
-		return nil, err;
+	if isPartialUpdate {
+		if strings.TrimSpace(user.Email) != "" {
+			existingUser.Email = user.Email
+		}
+		if strings.TrimSpace(user.FirstName) != "" {
+			existingUser.FirstName = user.FirstName
+		}
+		if strings.TrimSpace(user.LastName) != "" {
+			existingUser.LastName = user.LastName
+		}
+		if strings.TrimSpace(user.DateCreated) != "" {
+			existingUser.DateCreated = user.DateCreated
+		}
+	} else {
+		existingUser.Email = user.Email
+		existingUser.DateCreated = user.DateCreated
+		existingUser.FirstName = user.FirstName
+		existingUser.LastName = user.LastName
 	}
 
-	return existingUser, nil
-}
-
-func PatchUser(userId int64, user users.User) (*users.User, *errors.RestErr) {
-	if err := user.ValidatePatch(); err != nil {
-		return nil, err
-	}
-	var userDTO users.User
-	existingUser, err := userDTO.Find(userId); if err != nil {
-		return nil, err
-	}
-	if existingUser == nil {
-		return nil, errors.NewNotFoundError(fmt.Sprintf("User with id %d not found.", userId))
-	}
-
-	_, err = existingUser.Patch(user); if err != nil {
+	_, err = existingUser.Update(); if err != nil {
 		return nil, err;
 	}
 

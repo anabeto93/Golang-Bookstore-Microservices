@@ -11,7 +11,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CreateUser(c *gin.Context) {
+func getUserId(id string) (int64, *errors.RestErr) {
+	uId, err := strconv.ParseInt(id, 10, 64); if err != nil {
+		return 0, errors.NewBadRequestError("invalid user id")
+	}
+	return uId, nil
+}
+
+func Create(c *gin.Context) {
 	var user users.User
 	if err := c.ShouldBindJSON(&user); err != nil {
 		fmt.Println(err.Error())
@@ -28,7 +35,7 @@ func CreateUser(c *gin.Context) {
 	c.JSON(http.StatusCreated, createdUser)
 }
 
-func GetUsers(c *gin.Context) {
+func GetAll(c *gin.Context) {
 	users, err := services.GetAllUsers(); if err != nil {
 		c.JSON(int(err.Status), err)
 		return
@@ -36,69 +43,47 @@ func GetUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
-func FindUser(c *gin.Context) {
-	userId, err := strconv.ParseInt(c.Param("id"), 10, 64); if err != nil {
-		res := errors.NewBadRequestError("invalid user id")
-		c.JSON(int(res.Status), res)
+func Find(c *gin.Context) {
+	userId, err := getUserId(c.Param("id")); if err != nil {
+		c.JSON(int(err.Status), err)
 		return
 	}
-	user, findErr := services.FindUser(userId); if findErr != nil {
-		c.JSON(int(findErr.Status), findErr)
+	user, err := services.FindUser(userId); if err != nil {
+		c.JSON(int(err.Status), err)
 		return
 	}
 	c.JSON(http.StatusOK, user)
 }
 
-func UpdateUser(c *gin.Context) {
-	userId, err := strconv.ParseInt(c.Param("id"), 10, 64); if err != nil {
-		res := errors.NewBadRequestError("invalid user id")
-		c.JSON(int(res.Status), err)
+func Update(c *gin.Context) {
+	userId, err := getUserId(c.Param("id")); if err != nil {
+		c.JSON(int(err.Status), err)
 		return
 	}
 	var payload users.User
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		fmt.Println(err.Error())
+	if bindErr := c.ShouldBindJSON(&payload); bindErr != nil {
+		fmt.Println(bindErr.Error())
 		restErr := errors.NewBadRequestError("invalid json body")
 		c.JSON(http.StatusBadRequest, restErr)
 		return
 	}
 
-	user, updateErr := services.UpdateUser(userId, payload); if updateErr != nil {
+	isPartial := c.Request.Method == http.MethodPatch
+
+	user, updateErr := services.UpdateUser(userId, payload, isPartial); if updateErr != nil {
 		c.JSON(int(updateErr.Status), updateErr)
 		return
 	}
 	c.JSON(http.StatusOK, user)
 }
 
-func PatchUser(c *gin.Context) {
-	userId, err := strconv.ParseInt(c.Param("id"), 10, 64); if err != nil {
-		res := errors.NewBadRequestError("invalid user id")
-		c.JSON(int(res.Status), err)
+func Delete(c *gin.Context) {
+	userId, err := getUserId(c.Param("id")); if err != nil {
+		c.JSON(int(err.Status), err)
 		return
 	}
-	var payload users.User
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		fmt.Println(err.Error())
-		restErr := errors.NewBadRequestError("invalid json body")
-		c.JSON(http.StatusBadRequest, restErr)
-		return
-	}
-
-	user, updateErr := services.PatchUser(userId, payload); if updateErr != nil {
-		c.JSON(int(updateErr.Status), updateErr)
-		return
-	}
-	c.JSON(http.StatusOK, user)
-}
-
-func DeleteUser(c *gin.Context) {
-	userId, err := strconv.ParseInt(c.Param("id"), 10, 64); if err != nil {
-		res := errors.NewBadRequestError("invalid user id")
-		c.JSON(int(res.Status), err)
-		return
-	}
-	if delErr := services.DeleteUser(userId); delErr != nil {
-		c.JSON(int(delErr.Status), delErr)
+	if err := services.DeleteUser(userId); err != nil {
+		c.JSON(int(err.Status), err)
 		return
 	}
 	c.JSON(http.StatusNoContent, nil)

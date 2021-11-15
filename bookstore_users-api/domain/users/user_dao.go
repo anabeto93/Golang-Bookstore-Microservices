@@ -3,11 +3,13 @@ package users
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/anabeto93/bookstore/bookstore_users-api/datasources/mysql/users_db"
 	"github.com/anabeto93/bookstore/bookstore_users-api/utils/date_utils"
 	"github.com/anabeto93/bookstore/bookstore_users-api/utils/errors"
+	"github.com/anabeto93/bookstore/bookstore_users-api/utils/mysql_utils"
 )
 
 const (
@@ -53,7 +55,7 @@ func (user User) Find(userId int64) (*User, *errors.RestErr) {
 
 	sqlUser := stmnt.QueryRow(userId)
 
-	if sqlErr := sqlUser.Scan(&result.Id, &result.Email, &result.FirstName, &result.LastName, &result.DateCreated); err != nil {
+	if sqlErr := sqlUser.Scan(&result.Id, &result.FirstName, &result.LastName, &result.Email, &result.DateCreated); err != nil {
 		return nil, errors.NewInternalServerError(fmt.Sprintf("Error fetching user: %s", sqlErr.Error()))
 	}
 
@@ -110,62 +112,28 @@ func (user *User) Save() *errors.RestErr {
 	return nil
 }
 
-func (user *User) Update(payload User) (int64, *errors.RestErr) {
+func (user *User) Update() (int64, *errors.RestErr) {
 	stmnt, err := prepare(updateUserQuery); if err != nil {
 		return 0, err
 	}
 
 	defer stmnt.Close()
 
-	fname := payload.FirstName
-	lname := payload.LastName
-	email := payload.Email
-	date_created := payload.DateCreated
+	fname := user.FirstName
+	lname := user.LastName
+	email := user.Email
+	date_created := user.DateCreated
 
 	result, sqlErr := stmnt.Exec(fname, lname, email, date_created, user.Id);
 	if sqlErr != nil {
-		return 0, errors.NewInternalServerError(fmt.Sprintf("Error updating user: %s", sqlErr.Error()))
+		return 0, mysql_utils.ParseError("email", email, sqlErr, "Error updating user")
 	}
 
 	rows, sqlErr := result.RowsAffected(); if sqlErr != nil {
-		return 0, errors.NewInternalServerError(fmt.Sprintf("Error updating user: %s", sqlErr.Error()))
+		return 0, mysql_utils.ParseError("email", email, sqlErr, "Error updating user")
 	}
-
-	user.FirstName = fname
-	user.LastName = lname
-	user.Email = email
-	user.DateCreated = date_created
 
 	return rows, nil
-}
-
-func (user *User) Patch(payload User) (int64, *errors.RestErr) {
-	fname := payload.FirstName
-	if strings.TrimSpace(fname) == "" {
-		fname = user.FirstName
-	}
-
-	lname := payload.LastName
-	if strings.TrimSpace(lname) == "" {
-		lname = user.LastName
-	}
-
-	email := payload.Email
-	if strings.TrimSpace(email) == "" {
-		email = user.Email
-	}
-
-	date_created := payload.DateCreated
-	if strings.TrimSpace(date_created) == "" {
-		date_created = user.DateCreated
-	}
-
-	payload.FirstName = fname
-	payload.LastName = lname
-	payload.Email = email
-	payload.DateCreated = date_created
-
-	return user.Update(payload)
 }
 
 func (user *User) Destroy() *errors.RestErr {
@@ -176,7 +144,8 @@ func (user *User) Destroy() *errors.RestErr {
 	defer stmnt.Close()
 
 	_, sqlErr := stmnt.Exec(user.Id); if sqlErr != nil {
-		return errors.NewInternalServerError(fmt.Sprintf("Error deleting user: ", sqlErr.Error()))
+		fmt.Println(fmt.Sprintf("Error deleting user: %s", sqlErr.Error()))
+		return mysql_utils.ParseError("id", strconv.Itoa(int(user.Id)), sqlErr, "Error deleting user")
 	}
 	return nil
 }
