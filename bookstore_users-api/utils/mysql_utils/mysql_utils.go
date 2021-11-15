@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anabeto93/bookstore/bookstore_users-api/logger"
 	"github.com/anabeto93/bookstore/bookstore_users-api/utils/errors"
 	"github.com/go-sql-driver/mysql"
 )
@@ -15,7 +16,8 @@ func ParseError(field string, value string, err error, defaultMsg string) *error
 		if strings.Contains(err.Error(), "no rows in result set") {
 			return errors.NewNotFoundError("no matching record found")
 		}
-		return errors.NewInternalServerError(fmt.Sprintf("error passing database response: %s", err.Error()))
+		logger.Error("::Utils.Mysql:: Error parsing database response", err)
+		return errors.NewInternalServerError("error processing database request")
 	}
 
 	switch sqlErr.Number {

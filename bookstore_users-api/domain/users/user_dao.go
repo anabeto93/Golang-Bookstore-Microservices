@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/anabeto93/bookstore/bookstore_users-api/datasources/mysql/users_db"
+	"github.com/anabeto93/bookstore/bookstore_users-api/logger"
 	"github.com/anabeto93/bookstore/bookstore_users-api/utils/date_utils"
 	"github.com/anabeto93/bookstore/bookstore_users-api/utils/errors"
 	"github.com/anabeto93/bookstore/bookstore_users-api/utils/mysql_utils"
@@ -39,7 +40,8 @@ func (user User) GetAll() ([]User, *errors.RestErr) {
 	for sqlUsers.Next() {
 		var usr User
 		if sqlErr := sqlUsers.Scan(&usr.Id, &usr.Email, &usr.FirstName, &usr.LastName, &usr.Password, &usr.Status, &usr.DateCreated); sqlErr != nil {
-			return nil, errors.NewInternalServerError(fmt.Sprintf("Could not fetch users: %s", sqlErr.Error()))
+			logger.Error("::Domain.User.DAO:: Could not fetch users", sqlErr)
+			return nil, errors.NewInternalServerError("Database error")
 		}
 		users = append(users, usr)
 	}
@@ -58,7 +60,8 @@ func (user User) Find(userId int64) (*User, *errors.RestErr) {
 	sqlUser := stmnt.QueryRow(userId)
 
 	if sqlErr := sqlUser.Scan(&result.Id, &result.FirstName, &result.LastName, &result.Email, &result.Password, &result.Status, &result.DateCreated); err != nil {
-		return nil, errors.NewInternalServerError(fmt.Sprintf("Error fetching user: %s", sqlErr.Error()))
+		logger.Error("::Domain.User.DAO:: Error finding user", sqlErr)
+		return nil, errors.NewInternalServerError("Database error")
 	}
 
 	if (result == User{}) {
@@ -79,7 +82,8 @@ func (user User) FindByEmail(email string) (*User, *errors.RestErr) {
 
 	sqlUser := stmnt.QueryRow(email)
 	if sqlErr := sqlUser.Scan(&result.Id, &result.Email, &result.FirstName, &result.LastName, &result.Password, &result.Status, &result.DateCreated); err != nil {
-		return nil, errors.NewInternalServerError(fmt.Sprintf("Error fetching user: %s", sqlErr.Error()))
+		logger.Error("::Domain.User.DAO:: Error finding user", sqlErr)
+		return nil, errors.NewInternalServerError("Database error")
 	}
 
 	if (result != User{}) {
@@ -99,14 +103,16 @@ func (user User) FindByStatus(status string) ([]User, *errors.RestErr) {
 	defer stmnt.Close()
 
 	sqlUsers, sqlErr := stmnt.Query(status); if sqlErr != nil {
-		return nil, errors.NewInternalServerError(fmt.Sprintf("Could not fetch users: %s", sqlErr.Error()))
+		logger.Error("::Domain.User.DAO:: Could not fetch users", sqlErr)
+		return nil, errors.NewInternalServerError("Database error")
 	}
 	defer sqlUsers.Close()
 	
 	for sqlUsers.Next() {
 		var usr User
 		if sqlErr := sqlUsers.Scan(&usr.Id, &usr.Email, &usr.FirstName, &usr.LastName, &usr.Password, &usr.Status, &usr.DateCreated); sqlErr != nil {
-			return nil, errors.NewInternalServerError(fmt.Sprintf("Could not fetch users: %s", sqlErr.Error()))
+			logger.Error("::Domain.User.DAO:: Could parse fetched users", sqlErr)
+			return nil, errors.NewInternalServerError("Database error")
 		}
 		users = append(users, usr)
 	}
@@ -127,11 +133,14 @@ func (user *User) Save() *errors.RestErr {
 		if strings.Contains(sqlErr.Error(), "Duplicate entry") {
 			return errors.NewBadRequestError(fmt.Sprintf("email %s already exists", user.Email))			
 		}
-		return errors.NewInternalServerError(fmt.Sprintf("Error saving user: %s", sqlErr.Error()))
+
+		logger.Error("::Domain.User.DAO:: Could not save user", sqlErr)
+		return errors.NewInternalServerError("Database error")
 	}
 
 	userId, sqlErr := result.LastInsertId(); if sqlErr != nil {
-		return errors.NewInternalServerError(fmt.Sprintf("Error saving user: %s", sqlErr.Error()))
+		logger.Error("::Domain.User.DAO:: Could not save user", sqlErr)
+		return errors.NewInternalServerError("Database error")
 	}
 	
 	user.Id = userId
@@ -172,7 +181,7 @@ func (user *User) Destroy() *errors.RestErr {
 	defer stmnt.Close()
 
 	_, sqlErr := stmnt.Exec(user.Id); if sqlErr != nil {
-		fmt.Println(fmt.Sprintf("Error deleting user: %s", sqlErr.Error()))
+		logger.Error("::Domain.User.DAO:: Error deleting user", sqlErr)
 		return mysql_utils.ParseError("id", strconv.Itoa(int(user.Id)), sqlErr, "Error deleting user")
 	}
 	return nil
@@ -180,7 +189,8 @@ func (user *User) Destroy() *errors.RestErr {
 
 func prepare(query string) (*sql.Stmt, *errors.RestErr) {
 	stmnt, err := users_db.Client.Prepare(query); if err != nil {
-		return nil, errors.NewInternalServerError(fmt.Sprintf("Could not prepare sql statement: %s", err.Error()))
+		logger.Error("::Domain.User.DAO:: Could not prepare SQL statement", err)
+		return nil, errors.NewInternalServerError("Database error")
 	}
 
 	return stmnt, nil

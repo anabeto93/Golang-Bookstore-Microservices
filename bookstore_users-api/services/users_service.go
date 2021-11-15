@@ -9,7 +9,23 @@ import (
 	"github.com/anabeto93/bookstore/bookstore_users-api/utils/errors"
 )
 
-func CreateUser(user users.User) (*users.User, *errors.RestErr) {
+var (
+	UserService IUserService = &userService{}
+)
+type userService struct {
+
+}
+
+type IUserService interface {
+	CreateUser(users.User) (*users.User, *errors.RestErr)
+	FindUser(int64) (*users.User, *errors.RestErr)
+	Search(string) (users.Users, *errors.RestErr)
+	UpdateUser(int64, users.User, bool) (*users.User, *errors.RestErr)
+	GetAllUsers() (users.Users, *errors.RestErr)
+	DeleteUser(int64) *errors.RestErr
+}
+
+func (s *userService) CreateUser(user users.User) (*users.User, *errors.RestErr) {
 	if err := user.Validate(); err != nil {
 		return nil, err
 	}
@@ -44,7 +60,7 @@ func CreateUser(user users.User) (*users.User, *errors.RestErr) {
 	return &user, nil
 }
 
-func FindUser(userId int64) (*users.User, *errors.RestErr) {
+func (s *userService) FindUser(userId int64) (*users.User, *errors.RestErr) {
 	var userDTO users.User
 	user, err := userDTO.Find(userId); if err != nil {
 		return nil, err
@@ -57,7 +73,7 @@ func FindUser(userId int64) (*users.User, *errors.RestErr) {
 	return user, nil
 }
 
-func Search(status string) (users.Users, *errors.RestErr) {
+func (s *userService) Search(status string) (users.Users, *errors.RestErr) {
 	var userDTO users.User
 	users, err := userDTO.FindByStatus(status); if err != nil {
 		return nil, err
@@ -70,7 +86,7 @@ func Search(status string) (users.Users, *errors.RestErr) {
 	return users, nil
 }
 
-func UpdateUser(userId int64, user users.User, isPartialUpdate bool) (*users.User, *errors.RestErr) {
+func (s *userService) UpdateUser(userId int64, user users.User, isPartialUpdate bool) (*users.User, *errors.RestErr) {
 	if isPartialUpdate {
 		if err := user.ValidatePatch(); err != nil {
 			return nil, err
@@ -115,7 +131,7 @@ func UpdateUser(userId int64, user users.User, isPartialUpdate bool) (*users.Use
 	return existingUser, nil
 }
 
-func GetAllUsers() (users.Users, *errors.RestErr) {
+func (s *userService) GetAllUsers() (users.Users, *errors.RestErr) {
 	var userDTO users.User
 	users, err := userDTO.GetAll(); if err != nil {
 		return nil, err
@@ -124,7 +140,7 @@ func GetAllUsers() (users.Users, *errors.RestErr) {
 	return users, nil
 }
 
-func DeleteUser(userId int64) *errors.RestErr {
+func (s *userService) DeleteUser(userId int64) *errors.RestErr {
 	var userDTO users.User
 	existingUser, err := userDTO.Find(userId); if err != nil {
 		return err
