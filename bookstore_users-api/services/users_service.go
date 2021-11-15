@@ -71,6 +71,25 @@ func UpdateUser(userId int64, user users.User) (*users.User, *errors.RestErr) {
 	return existingUser, nil
 }
 
+func PatchUser(userId int64, user users.User) (*users.User, *errors.RestErr) {
+	if err := user.ValidatePatch(); err != nil {
+		return nil, err
+	}
+	var userDTO users.User
+	existingUser, err := userDTO.Find(userId); if err != nil {
+		return nil, err
+	}
+	if existingUser == nil {
+		return nil, errors.NewNotFoundError(fmt.Sprintf("User with id %d not found.", userId))
+	}
+
+	_, err = existingUser.Patch(user); if err != nil {
+		return nil, err;
+	}
+
+	return existingUser, nil
+}
+
 func GetAllUsers() ([]users.User, *errors.RestErr) {
 	var userDTO users.User
 	users, err := userDTO.GetAll(); if err != nil {

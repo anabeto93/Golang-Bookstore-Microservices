@@ -25,7 +25,19 @@ func (user *User) Validate() *errors.RestErr {
 	// check that the datetime is valid as well
 	if strings.TrimSpace(user.DateCreated) != "" {
 		// meaning a datetime has been provided
-		_, err := time.Parse("", user.DateCreated); if err != nil {
+		_, err := time.Parse("2006-01-02 15:04:05", user.DateCreated); if err != nil {
+			return errors.NewBadRequestError("invalid datetime value")			
+		}
+	}
+
+	return nil
+}
+
+func (user *User) ValidatePatch() *errors.RestErr {
+	// check that the datetime is valid as well
+	if strings.TrimSpace(user.DateCreated) != "" {
+		// meaning a datetime has been provided
+		_, err := time.Parse("2006-01-02 15:04:05", user.DateCreated); if err != nil {
 			return errors.NewBadRequestError("invalid datetime value")			
 		}
 	}

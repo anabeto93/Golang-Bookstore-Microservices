@@ -10,6 +10,7 @@ func mapUrls() {
 	router.POST("/users", users.CreateUser)
 	router.GET("/users", users.GetUsers)
 	router.GET("/users/:id", users.FindUser)
-	router.PUT("/users/:id", users.UpdateUser);
-	router.DELETE("/users/:id", users.DeleteUser);
+	router.PUT("/users/:id", users.UpdateUser)
+	router.PATCH("/users/:id", users.PatchUser)
+	router.DELETE("/users/:id", users.DeleteUser)
 }

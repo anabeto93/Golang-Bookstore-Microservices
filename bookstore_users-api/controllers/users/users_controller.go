@@ -70,6 +70,27 @@ func UpdateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+func PatchUser(c *gin.Context) {
+	userId, err := strconv.ParseInt(c.Param("id"), 10, 64); if err != nil {
+		res := errors.NewBadRequestError("invalid user id")
+		c.JSON(int(res.Status), err)
+		return
+	}
+	var payload users.User
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		fmt.Println(err.Error())
+		restErr := errors.NewBadRequestError("invalid json body")
+		c.JSON(http.StatusBadRequest, restErr)
+		return
+	}
+
+	user, updateErr := services.PatchUser(userId, payload); if updateErr != nil {
+		c.JSON(int(updateErr.Status), updateErr)
+		return
+	}
+	c.JSON(http.StatusOK, user)
+}
+
 func DeleteUser(c *gin.Context) {
 	userId, err := strconv.ParseInt(c.Param("id"), 10, 64); if err != nil {
 		res := errors.NewBadRequestError("invalid user id")

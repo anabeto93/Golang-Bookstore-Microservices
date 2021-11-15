@@ -118,6 +118,29 @@ func (user *User) Update(payload User) (int64, *errors.RestErr) {
 	defer stmnt.Close()
 
 	fname := payload.FirstName
+	lname := payload.LastName
+	email := payload.Email
+	date_created := payload.DateCreated
+
+	result, sqlErr := stmnt.Exec(fname, lname, email, date_created, user.Id);
+	if sqlErr != nil {
+		return 0, errors.NewInternalServerError(fmt.Sprintf("Error updating user: %s", sqlErr.Error()))
+	}
+
+	rows, sqlErr := result.RowsAffected(); if sqlErr != nil {
+		return 0, errors.NewInternalServerError(fmt.Sprintf("Error updating user: %s", sqlErr.Error()))
+	}
+
+	user.FirstName = fname
+	user.LastName = lname
+	user.Email = email
+	user.DateCreated = date_created
+
+	return rows, nil
+}
+
+func (user *User) Patch(payload User) (int64, *errors.RestErr) {
+	fname := payload.FirstName
 	if strings.TrimSpace(fname) == "" {
 		fname = user.FirstName
 	}
@@ -137,21 +160,12 @@ func (user *User) Update(payload User) (int64, *errors.RestErr) {
 		date_created = user.DateCreated
 	}
 
-	result, sqlErr := stmnt.Exec(fname, lname, email, date_created, user.Id);
-	if sqlErr != nil {
-		return 0, errors.NewInternalServerError(fmt.Sprintf("Error updating user: %s", sqlErr.Error()))
-	}
+	payload.FirstName = fname
+	payload.LastName = lname
+	payload.Email = email
+	payload.DateCreated = date_created
 
-	rows, sqlErr := result.RowsAffected(); if sqlErr != nil {
-		return 0, errors.NewInternalServerError(fmt.Sprintf("Error updating user: %s", sqlErr.Error()))
-	}
-
-	user.FirstName = fname
-	user.LastName = lname
-	user.Email = email
-	user.DateCreated = date_created
-
-	return rows, nil
+	return user.Update(payload)
 }
 
 func (user *User) Destroy() *errors.RestErr {
