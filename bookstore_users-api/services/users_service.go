@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/anabeto93/bookstore/bookstore_users-api/domain/users"
+	"github.com/anabeto93/bookstore/bookstore_users-api/utils/crypto_utils"
 	"github.com/anabeto93/bookstore/bookstore_users-api/utils/errors"
 )
 
@@ -34,6 +35,9 @@ func CreateUser(user users.User) (*users.User, *errors.RestErr) {
 		return nil, errors.NewBadRequestError(fmt.Sprintf("User with email %s already exists", user.Email))
 	}
 
+	user.Status = users.StatusActive
+	user.Password = crypto_utils.GetMd5(user.Password)
+
 	if err := user.Save(); err != nil {
 		return nil, err
 	}
@@ -51,6 +55,19 @@ func FindUser(userId int64) (*users.User, *errors.RestErr) {
 	}
 
 	return user, nil
+}
+
+func Search(status string) (users.Users, *errors.RestErr) {
+	var userDTO users.User
+	users, err := userDTO.FindByStatus(status); if err != nil {
+		return nil, err
+	}
+
+	if users == nil {
+		return nil, errors.NewNotFoundError("No users found.")
+	}
+
+	return users, nil
 }
 
 func UpdateUser(userId int64, user users.User, isPartialUpdate bool) (*users.User, *errors.RestErr) {
@@ -98,7 +115,7 @@ func UpdateUser(userId int64, user users.User, isPartialUpdate bool) (*users.Use
 	return existingUser, nil
 }
 
-func GetAllUsers() ([]users.User, *errors.RestErr) {
+func GetAllUsers() (users.Users, *errors.RestErr) {
 	var userDTO users.User
 	users, err := userDTO.GetAll(); if err != nil {
 		return nil, err

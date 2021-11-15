@@ -11,6 +11,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func isPublic(c *gin.Context) bool {
+	return c.GetHeader("X-Public") == "true"
+}
+
 func getUserId(id string) (int64, *errors.RestErr) {
 	uId, err := strconv.ParseInt(id, 10, 64); if err != nil {
 		return 0, errors.NewBadRequestError("invalid user id")
@@ -32,7 +36,7 @@ func Create(c *gin.Context) {
 		return
 	}
 	fmt.Println("Created user", createdUser)
-	c.JSON(http.StatusCreated, createdUser)
+	c.JSON(http.StatusCreated, createdUser.Marshall(isPublic(c)))
 }
 
 func GetAll(c *gin.Context) {
@@ -40,7 +44,7 @@ func GetAll(c *gin.Context) {
 		c.JSON(int(err.Status), err)
 		return
 	}
-	c.JSON(http.StatusOK, users)
+	c.JSON(http.StatusOK, users.Marshall(isPublic(c)))
 }
 
 func Find(c *gin.Context) {
@@ -52,7 +56,7 @@ func Find(c *gin.Context) {
 		c.JSON(int(err.Status), err)
 		return
 	}
-	c.JSON(http.StatusOK, user)
+	c.JSON(http.StatusOK, user.Marshall(isPublic(c)))
 }
 
 func Update(c *gin.Context) {
@@ -74,7 +78,7 @@ func Update(c *gin.Context) {
 		c.JSON(int(updateErr.Status), updateErr)
 		return
 	}
-	c.JSON(http.StatusOK, user)
+	c.JSON(http.StatusOK, user.Marshall(isPublic(c)))
 }
 
 func Delete(c *gin.Context) {
@@ -87,4 +91,15 @@ func Delete(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusNoContent, nil)
+}
+
+func Search(c *gin.Context) {
+	status := c.Query("status")
+
+	users, err := services.Search(status); if err != nil {
+		c.JSON(int(err.Status), err)
+		return
+	}
+
+	c.JSON(http.StatusOK, users.Marshall(isPublic(c)))
 }
